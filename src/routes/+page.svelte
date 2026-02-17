@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { fade } from 'svelte/transition';
+	import { fade, slide } from 'svelte/transition';
 	import TierRow from '$lib/components/TierRow.svelte';
 	import ValueCard from '$lib/components/ValueCard.svelte';
 	import Top5Selection from '$lib/components/Top5Selection.svelte';
@@ -7,6 +7,7 @@
 	import GoalsVision from '$lib/components/GoalsVision.svelte';
 	import ResultsSummary from '$lib/components/ResultsSummary.svelte';
 	import ProgressStepper from '$lib/components/ProgressStepper.svelte';
+	import { tooltip } from '$lib/tooltipStore';
 	import { values as initialValues } from '$lib/values';
 
 	interface Value {
@@ -42,6 +43,24 @@
 
 	// Interaction state
 	let selectedCardId = $state<string | null>(null);
+
+	// Custom value creation state
+	let customValueName = $state('');
+	let customValueDesc = $state('');
+
+	function addCustomValue() {
+		if (!customValueName.trim()) return;
+
+		const newValue: Value = {
+			id: `custom-${Date.now()}`,
+			name: customValueName.trim(),
+			description: customValueDesc.trim() || 'Ваша собственная ценность'
+		};
+
+		pool = [newValue, ...pool];
+		customValueName = '';
+		customValueDesc = '';
+	}
 
 	const STORAGE_KEY = 'personal-values-lab-state';
 
@@ -406,12 +425,36 @@
 
 				<aside class="pool-section glass">
 					<div class="section-header">
-						<h2 class="section-title">Ценности</h2>
-						{#if canProceedToPhase2}
-							<button class="btn btn-primary next-phase-btn" onclick={() => goToPhase(2)}>
-								Продолжить →
-							</button>
-						{/if}
+						<div class="header-top">
+							<h2 class="section-title">Ценности</h2>
+							{#if canProceedToPhase2}
+								<button class="btn btn-primary next-phase-btn" onclick={() => goToPhase(2)}>
+									Продолжить →
+								</button>
+							{/if}
+						</div>
+
+						<div class="add-custom-form">
+							<div class="input-group">
+								<input
+									type="text"
+									placeholder="Своя ценность..."
+									bind:value={customValueName}
+									class="glass"
+								/>
+								<button class="btn btn-secondary add-btn" onclick={addCustomValue} title="Добавить">
+									+
+								</button>
+							</div>
+							{#if customValueName}
+								<textarea
+									placeholder="Краткое описание (необязательно)"
+									bind:value={customValueDesc}
+									class="glass"
+									transition:slide
+								></textarea>
+							{/if}
+						</div>
 					</div>
 
 					<div
@@ -480,10 +523,20 @@
 		/>
 	{/if}
 </main>
-
 <footer>
 	<p>© 2026 Тест ценностей. Ваши данные хранятся у Вас локально и никуда не передаются.</p>
 </footer>
+
+{#if $tooltip.active}
+	<div
+		class="global-tooltip glass"
+		style="left: {$tooltip.x}px; top: {$tooltip.y}px;"
+		transition:fade={{ duration: 100 }}
+	>
+		<strong>{$tooltip.name}</strong>
+		<p>{$tooltip.description}</p>
+	</div>
+{/if}
 
 <style>
 	header {
@@ -605,18 +658,64 @@
 		position: sticky;
 		top: 2rem;
 		padding: 0;
-		overflow: hidden;
 		border-style: solid;
 	}
 
 	.pool-section .section-header {
 		padding: 1.25rem 1.5rem;
 		border-bottom: 1px solid var(--border-light);
-		background: rgba(255, 255, 255, 0.02);
+		background: rgba(15, 23, 42, 0.9);
+		backdrop-filter: blur(10px);
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		z-index: 1; /* Lowered from 5 to avoid overlap with tooltips */
+		position: relative;
+	}
+
+	.header-top {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
+	}
+
+	.add-custom-form {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.add-custom-form .input-group {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.add-custom-form input,
+	.add-custom-form textarea {
+		width: 100%;
+		padding: 0.5rem 0.75rem;
+		font-size: 0.9rem;
+		outline: none;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		color: white;
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.add-custom-form input::placeholder,
+	.add-custom-form textarea::placeholder {
+		color: rgba(255, 255, 255, 0.4);
+	}
+
+	.add-custom-form textarea {
+		min-height: 60px;
+		resize: none;
+	}
+
+	.add-custom-form .add-btn {
+		padding: 0 0.75rem;
+		font-weight: bold;
+		font-size: 1.2rem;
 	}
 
 	.next-phase-btn {
@@ -685,8 +784,43 @@
 	@media print {
 		header,
 		footer,
-		.section-header {
+		.section-header,
+		.global-tooltip {
 			display: none !important;
 		}
+	}
+
+	.global-tooltip {
+		position: fixed;
+		bottom: auto; /* Overriding possible defaults */
+		left: 0;
+		top: 0;
+		transform: translate(-50%, -110%);
+		padding: 1rem 1.25rem;
+		width: 320px;
+		font-size: 0.95rem;
+		line-height: 1.5;
+		color: var(--text-primary);
+		background: rgba(15, 23, 42, 0.98);
+		backdrop-filter: blur(12px);
+		border: 1px solid rgba(255, 255, 255, 0.15);
+		border-radius: 10px;
+		pointer-events: none;
+		z-index: 10000; /* Above everything */
+		text-align: left;
+		box-shadow:
+			0 20px 25px -5px rgba(0, 0, 0, 0.6),
+			0 0 20px rgba(0, 210, 255, 0.1);
+	}
+
+	.global-tooltip::after {
+		content: '';
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		transform: translateX(-50%);
+		border-width: 6px;
+		border-style: solid;
+		border-color: rgba(15, 23, 42, 0.98) transparent transparent transparent;
 	}
 </style>

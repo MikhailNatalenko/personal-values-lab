@@ -78,7 +78,6 @@
 		display: flex;
 		min-height: 80px;
 		margin-bottom: 0.75rem;
-		overflow: hidden;
 		transition: all 0.2s ease;
 	}
 
