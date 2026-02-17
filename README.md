@@ -1,42 +1,19 @@
-# sv
+# 🎯 О проекте
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Этот проект — интерактивная версия классического теста ценностей. Он помогает пользователям пройти тест помощью чуть более удобного интерфейса.
+Если вы знаете, кто автор оригинального теста, напишите, мне пожалуйста, я добавлю его имя в описание.
 
-## Creating a project
+# 📦 Быстрый старт
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-npx sv create --template minimal --types ts --add eslint vitest="usages:unit,component" prettier playwright --install npm .
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
+```bash
+npm install
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+# 📄 Лицензия
 
-To create a production version of your app:
+Этот проект распространяется под лицензией **GNU General Public License v3.0 (GPL-3.0)**. Подробности в файле [LICENSE](file:///d:/proj/values/LICENSE).
 
-```sh
-npm run build
-```
 
-You can preview the production build with `npm run preview`.
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+

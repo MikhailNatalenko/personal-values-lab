@@ -10,7 +10,7 @@ const config = {
 			fallback: '404.html'
 		}),
 		paths: {
-			base: process.env.NODE_ENV === 'production' ? '/values' : '',
+			base: process.env.NODE_ENV === 'production' ? '/personal-values-lab' : '',
 		}
 	}
 };
