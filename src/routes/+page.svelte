@@ -169,41 +169,99 @@
 	}
 
 	function moveValueToTop5(id: string, index: number) {
-		// Logic for Phase 2:
-		// We can "pick" a value from the categorized list (tiers)
-		// and place it in a Top 5 slot.
+		const existingIndex = top5.findIndex((v) => v?.id === id);
+		const targetOccupant = top5[index];
 
-		// Find the value in tiers
+		// Case 1: Value is already in Top 5 (Reordering)
+		if (existingIndex !== -1) {
+			const sourceValue = top5[existingIndex]!;
+
+			// Remove from old position
+			const newTop5 = [...top5];
+			newTop5.splice(existingIndex, 1, null);
+
+			// If target is empty, just place it
+			if (!targetOccupant) {
+				newTop5[index] = sourceValue;
+			} else {
+				// Shuffling logic: Insert at new position and shift others
+				const valuesOnly = top5.filter((v): v is Value => v !== null);
+				const movingValue = sourceValue;
+				const otherValues = valuesOnly.filter((v) => v.id !== id);
+
+				// Insert at the requested index among active values
+				otherValues.splice(index, 0, movingValue);
+
+				// Reconstruct top5 with padding
+				for (let i = 0; i < 5; i++) {
+					newTop5[i] = otherValues[i] || null;
+				}
+			}
+			top5 = newTop5;
+			selectedCardId = null;
+			return;
+		}
+
+		// Case 2: Value is coming from tiers
 		let value: Value | undefined;
 		for (const tier of tiers) {
-			value = tier.values.find((v) => v.id === id);
-			if (value) break;
+			const foundIdx = tier.values.findIndex((v) => v.id === id);
+			if (foundIdx !== -1) {
+				value = tier.values[foundIdx];
+				tier.values.splice(foundIdx, 1);
+				break;
+			}
 		}
 
-		// Also check if it's already in another top5 slot (swap/move)
-		const existingIndex = top5.findIndex((v) => v?.id === id);
+		if (!value) return;
 
-		if (!value && existingIndex === -1) return;
+		// Shift existing values if target is occupied or we want to insert
+		const valuesOnly = top5.filter((v): v is Value => v !== null);
+		valuesOnly.splice(index, 0, value);
 
-		const valueToPlace = value || top5[existingIndex]!;
-
-		// If moving within top5
-		if (existingIndex !== -1) {
-			top5[existingIndex] = null;
+		// If we now have > 5 values, return the last one to tiers
+		if (valuesOnly.length > 5) {
+			const evicted = valuesOnly.pop()!;
+			const targetTier = tiers.find((t) => t.label === 'S') || tiers[0];
+			targetTier.values.push(evicted);
 		}
 
-		// Place in new slot (and handle eviction if necessary)
-		top5[index] = valueToPlace;
-
-		// Ensure definition exists
-		if (valueToPlace && !personalDefinitions[valueToPlace.id]) {
-			personalDefinitions[valueToPlace.id] = '';
-		}
+		// Update top5 state
+		const newTop5 = Array(5).fill(null);
+		valuesOnly.forEach((v, i) => {
+			newTop5[i] = v;
+			if (!personalDefinitions[v.id]) {
+				personalDefinitions[v.id] = '';
+			}
+		});
+		top5 = newTop5;
 		selectedCardId = null;
 	}
 
 	function removeFromTop5(index: number) {
 		top5[index] = null;
+	}
+
+	function handleReset() {
+		if (
+			window.confirm('Вы уверены, что хотите сбросить весь прогресс? Это действие нельзя отменить.')
+		) {
+			// Clear localStorage
+			localStorage.removeItem(STORAGE_KEY);
+
+			// Reset state to initials
+			pool = [...initialValues];
+			tiers.forEach((t) => (t.values = []));
+			top5 = Array(5).fill(null);
+			personalDefinitions = {};
+			goalsVision = {};
+			committedActions = {};
+			currentPhase = 1;
+			selectedCardId = null;
+
+			// Force reload to ensure all state is clean
+			window.location.reload();
+		}
 	}
 
 	const validTop5 = $derived(top5.filter((v): v is Value => v !== null));
@@ -241,6 +299,14 @@
 
 <header>
 	<div class="header-main">
+		<button
+			class="reset-btn glass"
+			onclick={handleReset}
+			title="Сбросить прогресс"
+			aria-label="Сбросить прогресс"
+		>
+			↺
+		</button>
 		<h1>Мои <span class="accent">Ценности</span></h1>
 		<button
 			class="help-btn glass"
@@ -321,50 +387,52 @@
 <main>
 	{#if currentPhase === 1}
 		<div class="phase1" transition:fade>
-			<div class="tier-list">
-				{#each tiers as tier (tier.label)}
-					<TierRow
-						{...tier}
-						isSelectedId={selectedCardId}
-						onDrop={handleDrop}
-						onDragStart={handleDragStart}
-						onClickValue={selectValue}
-						onClickTier={(label) => moveValue(selectedCardId!, label)}
-					/>
-				{/each}
-			</div>
-
-			<section class="pool-section">
-				<div class="section-header">
-					<h2 class="section-title">Список ценностей</h2>
-					{#if canProceedToPhase2}
-						<button class="btn btn-primary" onclick={() => goToPhase(2)}> Продолжить → </button>
-					{/if}
-				</div>
-
-				<div
-					class="pool-container glass"
-					class:clickable={!!selectedCardId && !pool.find((v) => v.id === selectedCardId)}
-					ondrop={handlePoolDrop}
-					ondragover={handleDragOver}
-					onclick={() => selectedCardId && moveValue(selectedCardId, null)}
-					role="listbox"
-					aria-label="Пул ценностей"
-					tabindex="0"
-				>
-					{#each pool as value (value.id)}
-						<ValueCard
-							{...value}
+			<div class="main-layout">
+				<div class="tier-list">
+					{#each tiers as tier (tier.label)}
+						<TierRow
+							{...tier}
+							isSelectedId={selectedCardId}
+							onDrop={handleDrop}
 							onDragStart={handleDragStart}
-							isSelected={selectedCardId === value.id}
-							onClick={selectValue}
+							onClickValue={selectValue}
+							onClickTier={(label) => moveValue(selectedCardId!, label)}
 						/>
 					{/each}
-					{#if pool.length === 0}
-						<p class="empty-msg">Все ценности распределены</p>
-					{/if}
 				</div>
-			</section>
+
+				<aside class="pool-section glass">
+					<div class="section-header">
+						<h2 class="section-title">Ценности</h2>
+						{#if canProceedToPhase2}
+							<button class="btn btn-primary" onclick={() => goToPhase(2)}> → </button>
+						{/if}
+					</div>
+
+					<div
+						class="pool-container"
+						class:clickable={!!selectedCardId && !pool.find((v) => v.id === selectedCardId)}
+						ondrop={handlePoolDrop}
+						ondragover={handleDragOver}
+						onclick={() => selectedCardId && moveValue(selectedCardId, null)}
+						role="listbox"
+						aria-label="Пул ценностей"
+						tabindex="0"
+					>
+						{#each pool as value (value.id)}
+							<ValueCard
+								{...value}
+								onDragStart={handleDragStart}
+								isSelected={selectedCardId === value.id}
+								onClick={selectValue}
+							/>
+						{/each}
+						{#if pool.length === 0}
+							<p class="empty-msg">Всё распределено</p>
+						{/if}
+					</div>
+				</aside>
+			</div>
 		</div>
 	{:else if currentPhase === 2}
 		<Top5Selection
@@ -461,6 +529,29 @@
 		box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
 	}
 
+	.reset-btn {
+		width: 42px;
+		height: 42px;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-weight: bold;
+		font-size: 1.5rem;
+		cursor: pointer;
+		color: #ff4757;
+		transition: all 0.2s ease;
+		border: 1px solid rgba(255, 107, 129, 0.1);
+		background: rgba(255, 107, 129, 0.05);
+	}
+
+	.reset-btn:hover {
+		background: rgba(255, 107, 129, 0.15);
+		transform: scale(1.05) rotate(-30deg);
+		border-color: #ff4757;
+		box-shadow: 0 0 15px rgba(255, 71, 87, 0.3);
+	}
+
 	.intro-mini {
 		opacity: 0.7;
 		font-size: 1.1rem;
@@ -489,59 +580,81 @@
 		-webkit-text-fill-color: transparent;
 	}
 
+	.main-layout {
+		display: grid;
+		grid-template-columns: 1fr 320px;
+		gap: 2rem;
+		align-items: start;
+		max-width: 1400px;
+		margin: 0 auto;
+	}
+
 	.tier-list {
-		margin-bottom: 4rem;
+		flex-grow: 1;
 	}
 
-	.section-header {
+	.pool-section {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 1.5rem;
+		flex-direction: column;
+		height: calc(100vh - 200px);
+		position: sticky;
+		top: 2rem;
+		padding: 0;
+		overflow: hidden;
+		border-style: solid;
 	}
 
-	.section-title {
-		font-size: 1.5rem;
-		margin: 0;
-		color: var(--text-primary);
-	}
-
-	.btn-secondary {
-		background: rgba(255, 255, 255, 0.05);
-		border: 1px solid var(--border-light);
-		color: var(--text-secondary);
-	}
-
-	.btn-secondary:hover {
-		background: rgba(255, 255, 255, 0.1);
-		color: var(--text-primary);
+	.pool-section .section-header {
+		padding: 1.5rem;
+		border-bottom: 1px solid var(--border-light);
+		background: rgba(255, 255, 255, 0.02);
 	}
 
 	.pool-container {
-		min-height: 200px;
-		padding: 2rem;
+		flex-grow: 1;
+		padding: 1.5rem;
 		display: flex;
-		flex-wrap: wrap;
-		gap: 1rem;
-		align-items: flex-start;
-		justify-content: flex-start;
-		border-style: dashed;
+		flex-direction: column;
+		gap: 0.75rem;
+		overflow-y: auto;
+		scrollbar-width: thin;
+		scrollbar-color: var(--accent-primary) transparent;
+	}
+
+	.pool-container::-webkit-scrollbar {
+		width: 4px;
+	}
+
+	.pool-container::-webkit-scrollbar-thumb {
+		background: var(--accent-primary);
+		border-radius: 4px;
 	}
 
 	.pool-container.clickable {
 		cursor: pointer;
-		border-color: var(--accent-primary);
-	}
-
-	.pool-container.clickable:hover {
 		background: rgba(255, 255, 255, 0.03);
 	}
 
 	.empty-msg {
-		width: 100%;
 		text-align: center;
+		padding: 2rem;
 		opacity: 0.5;
 		font-style: italic;
+	}
+
+	@media (max-width: 1100px) {
+		.main-layout {
+			grid-template-columns: 1fr;
+		}
+		.pool-section {
+			position: static;
+			height: auto;
+			max-height: 400px;
+		}
+		.pool-container {
+			flex-direction: row;
+			flex-wrap: wrap;
+		}
 	}
 
 	footer {

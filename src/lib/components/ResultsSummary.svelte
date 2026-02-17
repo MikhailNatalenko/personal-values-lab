@@ -59,7 +59,7 @@
 							{#if goalsVision[val.id]}
 								<div class="data-block">
 									<h5>Цели и Видение</h5>
-									<p><strong>Маяк:</strong> {goalsVision[val.id].longTerm || '...'}</p>
+									<p><strong>Большая цель:</strong> {goalsVision[val.id].longTerm || '...'}</p>
 									<p><strong>Шаги:</strong> {goalsVision[val.id].intermediate || '...'}</p>
 								</div>
 							{/if}

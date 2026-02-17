@@ -58,6 +58,21 @@
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 	}
 
+	:global(.value-card.selected) {
+		border-color: #00d2ff !important;
+		background: rgba(0, 210, 255, 0.2) !important;
+		box-shadow:
+			0 0 25px rgba(0, 210, 255, 0.6),
+			inset 0 0 10px rgba(0, 210, 255, 0.4) !important;
+		transform: translateY(-6px) !important;
+		z-index: 10;
+	}
+
+	/* Animation for sidebar selection - very pronounced shift */
+	:global(.pool-container) :global(.value-card.selected) {
+		transform: translateX(35px) translateY(-6px) !important;
+	}
+
 	/* Custom Tooltip */
 	.tooltip {
 		position: absolute;
