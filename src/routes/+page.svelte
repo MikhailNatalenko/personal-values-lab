@@ -2,6 +2,10 @@
 	import { fade } from 'svelte/transition';
 	import TierRow from '$lib/components/TierRow.svelte';
 	import ValueCard from '$lib/components/ValueCard.svelte';
+	import Top5Selection from '$lib/components/Top5Selection.svelte';
+	import CommittedActions from '$lib/components/CommittedActions.svelte';
+	import GoalsVision from '$lib/components/GoalsVision.svelte';
+	import ResultsSummary from '$lib/components/ResultsSummary.svelte';
 	import { values as initialValues } from '$lib/values';
 
 	interface Value {
@@ -25,6 +29,15 @@
 
 	let pool = $state<Value[]>([...initialValues]);
 	let showHelp = $state(false);
+	let currentPhase = $state(1); // 1-4 Steps, 5 Summary
+	let top5 = $state<(Value | null)[]>([null, null, null, null, null]);
+	let personalDefinitions = $state<Record<string, string>>({});
+	let committedActions = $state<
+		Record<string, { contact: number; filling: string; immediate: string }>
+	>({});
+	let goalsVision = $state<
+		Record<string, { longTerm: string; intermediate: string; actions: string }>
+	>({});
 
 	function handleDragStart(e: DragEvent, id: string) {
 		e.dataTransfer?.setData('text/plain', id);
@@ -37,28 +50,11 @@
 		const id = e.dataTransfer?.getData('text/plain');
 		if (!id) return;
 
+		// If we are in Phase 2/3, handle separately or just return
+		if (currentPhase !== 1) return;
+
 		// Find value in any tier or pool
-		let value: Value | undefined;
-
-		// Check tiers
-		for (let i = 0; i < tiers.length; i++) {
-			const foundIndex = tiers[i].values.findIndex((v) => v.id === id);
-			if (foundIndex !== -1) {
-				value = tiers[i].values[foundIndex];
-				tiers[i].values.splice(foundIndex, 1);
-				break;
-			}
-		}
-
-		// Check pool if not found in tiers
-		if (!value) {
-			const foundIndex = pool.findIndex((v) => v.id === id);
-			if (foundIndex !== -1) {
-				value = pool[foundIndex];
-				pool.splice(foundIndex, 1);
-			}
-		}
-
+		let value = findAndRemoveValue(id);
 		if (!value) return;
 
 		// Add to target
@@ -70,6 +66,28 @@
 				targetTier.values.push(value);
 			}
 		}
+	}
+
+	function findAndRemoveValue(id: string): Value | undefined {
+		// Check tiers
+		for (let i = 0; i < tiers.length; i++) {
+			const foundIndex = tiers[i].values.findIndex((v) => v.id === id);
+			if (foundIndex !== -1) {
+				const v = tiers[i].values[foundIndex];
+				tiers[i].values.splice(foundIndex, 1);
+				return v;
+			}
+		}
+
+		// Check pool
+		const foundIndex = pool.findIndex((v) => v.id === id);
+		if (foundIndex !== -1) {
+			const v = pool[foundIndex];
+			pool.splice(foundIndex, 1);
+			return v;
+		}
+
+		return undefined;
 	}
 
 	function handlePoolDrop(e: DragEvent) {
@@ -84,6 +102,80 @@
 	function toggleHelp() {
 		showHelp = !showHelp;
 	}
+
+	function goToPhase(p: number) {
+		currentPhase = p;
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}
+
+	function handleTop5Drop(e: DragEvent, index: number) {
+		e.preventDefault();
+		const id = e.dataTransfer?.getData('text/plain');
+		if (!id) return;
+
+		// Logic for Phase 2:
+		// We can "pick" a value from the categorized list (tiers)
+		// and place it in a Top 5 slot.
+
+		// Find the value in tiers
+		let value: Value | undefined;
+		for (const tier of tiers) {
+			value = tier.values.find((v) => v.id === id);
+			if (value) break;
+		}
+
+		// Also check if it's already in another top5 slot (swap/move)
+		const existingIndex = top5.findIndex((v) => v?.id === id);
+
+		if (!value && existingIndex === -1) return;
+
+		const valueToPlace = value || top5[existingIndex]!;
+
+		// If moving within top5
+		if (existingIndex !== -1) {
+			top5[existingIndex] = null;
+		}
+
+		// Place in new slot (and handle eviction if necessary)
+		top5[index] = valueToPlace;
+
+		// Ensure definition exists
+		if (valueToPlace && !personalDefinitions[valueToPlace.id]) {
+			personalDefinitions[valueToPlace.id] = '';
+		}
+	}
+
+	function removeFromTop5(index: number) {
+		top5[index] = null;
+	}
+
+	const validTop5 = $derived(top5.filter((v): v is Value => v !== null));
+
+	const categorizedCandidates = $derived(
+		tiers
+			.filter((t) => t.label === 'S' || t.label === 'A')
+			.flatMap((t) => t.values.map((v) => ({ ...v, tierLabel: t.label, tierColor: t.color })))
+	);
+
+	const canProceedToPhase2 = $derived(
+		tiers
+			.filter((t) => t.label === 'S' || t.label === 'A')
+			.reduce((acc, t) => acc + t.values.length, 0) >= 5
+	);
+
+	const canFinishRanking = $derived(top5.every((v) => v !== null));
+
+	// Pre-initialize actions and goals for the selected top 5
+	$effect(() => {
+		for (const v of validTop5) {
+			if (!committedActions[v.id]) {
+				committedActions[v.id] = { contact: 5, filling: '', immediate: '' };
+			}
+			if (!goalsVision[v.id]) {
+				goalsVision[v.id] = { longTerm: '', intermediate: '', actions: '' };
+			}
+		}
+	});
 </script>
 
 <svelte:head>
@@ -125,45 +217,121 @@
 				чей-то вкус правильный, а ваш нет. Это лишь говорит о том, что ваши вкусы различаются. То же
 				касается и ценностей: они могут быть разными и это нормально. Важно выбрать именно ваши.
 			</p>
-			<p>
-				<i
-					>Выберите 5-8 наиболее значимых ценностей именно для вас. Распределите их по категориям
-					сложности/приоритетности.</i
-				>
-			</p>
+			{#if currentPhase === 1}
+				<p>
+					<i
+						>Выберите 5-8 наиболее значимых ценностей именно для вас. Распределите их по категориям
+						сложности/приоритетности.</i
+					>
+				</p>
+			{:else if currentPhase === 2}
+				<p>
+					<i
+						>Выберите пять самых важных для вас на данный момент ценностей и распределите их по
+						местам, начиная с самой значимой.</i
+					>
+				</p>
+			{:else if currentPhase === 3}
+				<p>
+					<i>Оцените текущий контакт с вашими главными ценностями и наметьте первые шаги.</i>
+				</p>
+			{:else if currentPhase === 4}
+				<p>
+					<i
+						>Сформулируйте долгосрочное видение и цели, которые помогут вам следовать вашим
+						ценностям.</i
+					>
+				</p>
+			{/if}
 		</div>
 	{:else}
 		<div class="intro-mini">
-			<p>Распределите наиболее важные для вас ценности по категориям приоритетности.</p>
+			{#if currentPhase === 1}
+				<p>Распределите наиболее важные для вас ценности по категориям приоритетности.</p>
+			{:else if currentPhase === 2}
+				<p>Выберите 5 самых важных ценностей из вашего списка.</p>
+			{:else if currentPhase === 3}
+				<p>Оцените контакт с ценностями и наметьте действия.</p>
+			{:else if currentPhase === 4}
+				<p>Сформулируйте цели и видение.</p>
+			{:else}
+				<p>Ваш результат готов.</p>
+			{/if}
 		</div>
 	{/if}
 </header>
 
 <main>
-	<div class="tier-list">
-		{#each tiers as tier (tier.label)}
-			<TierRow {...tier} onDrop={handleDrop} onDragStart={handleDragStart} />
-		{/each}
-	</div>
+	{#if currentPhase === 1}
+		<div class="phase1" transition:fade>
+			<div class="tier-list">
+				{#each tiers as tier (tier.label)}
+					<TierRow {...tier} onDrop={handleDrop} onDragStart={handleDragStart} />
+				{/each}
+			</div>
 
-	<section class="pool-section">
-		<h2 class="section-title">Список ценностей</h2>
-		<div
-			class="pool-container glass"
-			ondrop={handlePoolDrop}
-			ondragover={handleDragOver}
-			role="listbox"
-			aria-label="Пул ценностей"
-			tabindex="0"
-		>
-			{#each pool as value (value.id)}
-				<ValueCard {...value} onDragStart={handleDragStart} />
-			{/each}
-			{#if pool.length === 0}
-				<p class="empty-msg">Все ценности распределены</p>
-			{/if}
+			<section class="pool-section">
+				<div class="section-header">
+					<h2 class="section-title">Список ценностей</h2>
+					{#if canProceedToPhase2}
+						<button class="btn btn-primary" onclick={() => goToPhase(2)}> Продолжить → </button>
+					{/if}
+				</div>
+
+				<div
+					class="pool-container glass"
+					ondrop={handlePoolDrop}
+					ondragover={handleDragOver}
+					role="listbox"
+					aria-label="Пул ценностей"
+					tabindex="0"
+				>
+					{#each pool as value (value.id)}
+						<ValueCard {...value} onDragStart={handleDragStart} />
+					{/each}
+					{#if pool.length === 0}
+						<p class="empty-msg">Все ценности распределены</p>
+					{/if}
+				</div>
+			</section>
 		</div>
-	</section>
+	{:else if currentPhase === 2}
+		<Top5Selection
+			bind:top5
+			bind:personalDefinitions
+			categorizedValues={categorizedCandidates}
+			onDrop={handleTop5Drop}
+			onRemove={removeFromTop5}
+			onFinish={() => goToPhase(3)}
+			onBack={() => goToPhase(1)}
+			canFinish={canFinishRanking}
+			{handleDragStart}
+			{handleDragOver}
+		/>
+	{:else if currentPhase === 3}
+		<CommittedActions
+			values={validTop5}
+			bind:committedActions
+			onBack={() => goToPhase(2)}
+			onNext={() => goToPhase(4)}
+		/>
+	{:else if currentPhase === 4}
+		<GoalsVision
+			values={validTop5}
+			bind:goalsVision
+			onBack={() => goToPhase(3)}
+			onFinish={() => goToPhase(5)}
+		/>
+	{:else if currentPhase === 5}
+		<ResultsSummary
+			{top5}
+			{personalDefinitions}
+			{committedActions}
+			{goalsVision}
+			{tiers}
+			onBack={() => goToPhase(4)}
+		/>
+	{/if}
 </main>
 
 <footer>
@@ -251,9 +419,27 @@
 		margin-bottom: 4rem;
 	}
 
+	.section-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 1.5rem;
+	}
+
 	.section-title {
 		font-size: 1.5rem;
-		margin-bottom: 1.5rem;
+		margin: 0;
+		color: var(--text-primary);
+	}
+
+	.btn-secondary {
+		background: rgba(255, 255, 255, 0.05);
+		border: 1px solid var(--border-light);
+		color: var(--text-secondary);
+	}
+
+	.btn-secondary:hover {
+		background: rgba(255, 255, 255, 0.1);
 		color: var(--text-primary);
 	}
 
@@ -282,5 +468,13 @@
 		border-top: 1px solid var(--border-light);
 		opacity: 0.6;
 		font-size: 0.9rem;
+	}
+
+	@media print {
+		header,
+		footer,
+		.section-header {
+			display: none !important;
+		}
 	}
 </style>
