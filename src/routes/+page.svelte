@@ -6,6 +6,7 @@
 	import CommittedActions from '$lib/components/CommittedActions.svelte';
 	import GoalsVision from '$lib/components/GoalsVision.svelte';
 	import ResultsSummary from '$lib/components/ResultsSummary.svelte';
+	import ProgressStepper from '$lib/components/ProgressStepper.svelte';
 	import { values as initialValues } from '$lib/values';
 
 	interface Value {
@@ -318,6 +319,8 @@
 		</button>
 	</div>
 
+	<ProgressStepper {currentPhase} />
+
 	{#if showHelp}
 		<div class="intro glass" transition:fade={{ duration: 200 }}>
 			<p>
@@ -494,7 +497,7 @@
 		align-items: center;
 		justify-content: center;
 		gap: 1.5rem;
-		margin-bottom: 2rem;
+		margin-bottom: 1.5rem;
 	}
 
 	h1 {
