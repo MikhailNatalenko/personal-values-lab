@@ -13,26 +13,32 @@
 			tierLabel: string;
 			tierColor: string;
 		}[];
+		selectedCardId?: string | null;
 		onDrop: (e: DragEvent, index: number) => void;
+		moveValueToTop5?: (id: string, index: number) => void;
 		onRemove: (index: number) => void;
 		onFinish: () => void;
 		onBack: () => void;
 		canFinish: boolean;
 		handleDragStart: (e: DragEvent, id: string) => void;
 		handleDragOver: (e: DragEvent) => void;
+		onClickValue?: (id: string) => void;
 	}
 
 	let {
 		top5 = $bindable(),
 		personalDefinitions = $bindable(),
 		categorizedValues,
+		selectedCardId = null,
 		onDrop,
+		moveValueToTop5,
 		onRemove,
 		onFinish,
 		onBack,
 		canFinish,
 		handleDragStart,
-		handleDragOver
+		handleDragOver,
+		onClickValue
 	}: Props = $props();
 </script>
 
@@ -50,8 +56,10 @@
 			<div
 				class="slot glass"
 				class:has-value={!!val}
+				class:clickable={!!selectedCardId && !val}
 				ondragover={handleDragOver}
 				ondrop={(e) => onDrop(e, i)}
+				onclick={() => selectedCardId && !val && moveValueToTop5?.(selectedCardId, i)}
 				role="listitem"
 			>
 				<div class="slot-num">{i + 1}</div>
@@ -87,6 +95,8 @@
 							name={val.name}
 							description={val.description}
 							onDragStart={handleDragStart}
+							isSelected={selectedCardId === val.id}
+							onClick={onClickValue}
 						/>
 						<span class="tier-badge" style="background: {val.tierColor}">{val.tierLabel}</span>
 					</div>
@@ -128,6 +138,16 @@
 
 	.slot.has-value {
 		min-height: 120px;
+	}
+
+	.slot.clickable {
+		cursor: pointer;
+		border-color: var(--accent-primary);
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.slot.clickable:hover {
+		background: rgba(255, 255, 255, 0.08);
 	}
 
 	.slot-num {

@@ -39,25 +39,77 @@
 		Record<string, { longTerm: string; intermediate: string; actions: string }>
 	>({});
 
+	// Interaction state
+	let selectedCardId = $state<string | null>(null);
+
+	const STORAGE_KEY = 'personal-values-lab-state';
+
+	// Persistence: Load
+	$effect(() => {
+		const saved = localStorage.getItem(STORAGE_KEY);
+		if (saved) {
+			try {
+				const data = JSON.parse(saved);
+				if (data.tiers) {
+					// Map values back to ensure they match current definition if needed
+					tiers.forEach((t, i) => {
+						if (data.tiers[i]) t.values = data.tiers[i].values;
+					});
+				}
+				if (data.pool) pool = data.pool;
+				if (data.currentPhase) currentPhase = data.currentPhase;
+				if (data.top5) top5 = data.top5;
+				if (data.personalDefinitions) personalDefinitions = data.personalDefinitions;
+				if (data.committedActions) committedActions = data.committedActions;
+				if (data.goalsVision) goalsVision = data.goalsVision;
+			} catch (e) {
+				console.error('Failed to load state:', e);
+			}
+		}
+	});
+
+	// Persistence: Save
+	$effect(() => {
+		const state = {
+			tiers: tiers.map((t) => ({ label: t.label, values: t.values })),
+			pool,
+			currentPhase,
+			top5,
+			personalDefinitions,
+			committedActions,
+			goalsVision
+		};
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+	});
+
 	function handleDragStart(e: DragEvent, id: string) {
+		selectedCardId = null; // Clear click selection on drag
 		e.dataTransfer?.setData('text/plain', id);
 		if (e.dataTransfer) {
 			e.dataTransfer.effectAllowed = 'move';
 		}
 	}
 
+	function selectValue(id: string) {
+		if (selectedCardId === id) {
+			selectedCardId = null;
+		} else {
+			selectedCardId = id;
+		}
+	}
+
 	function handleDrop(e: DragEvent, targetTierLabel: string | null) {
 		const id = e.dataTransfer?.getData('text/plain');
 		if (!id) return;
+		moveValue(id, targetTierLabel);
+	}
 
-		// If we are in Phase 2/3, handle separately or just return
+	function moveValue(id: string, targetTierLabel: string | null) {
 		if (currentPhase !== 1) return;
 
-		// Find value in any tier or pool
 		let value = findAndRemoveValue(id);
 		if (!value) return;
 
-		// Add to target
 		if (targetTierLabel === null) {
 			pool.push(value);
 		} else {
@@ -66,6 +118,7 @@
 				targetTier.values.push(value);
 			}
 		}
+		selectedCardId = null;
 	}
 
 	function findAndRemoveValue(id: string): Value | undefined {
@@ -112,7 +165,10 @@
 		e.preventDefault();
 		const id = e.dataTransfer?.getData('text/plain');
 		if (!id) return;
+		moveValueToTop5(id, index);
+	}
 
+	function moveValueToTop5(id: string, index: number) {
 		// Logic for Phase 2:
 		// We can "pick" a value from the categorized list (tiers)
 		// and place it in a Top 5 slot.
@@ -143,6 +199,7 @@
 		if (valueToPlace && !personalDefinitions[valueToPlace.id]) {
 			personalDefinitions[valueToPlace.id] = '';
 		}
+		selectedCardId = null;
 	}
 
 	function removeFromTop5(index: number) {
@@ -266,7 +323,14 @@
 		<div class="phase1" transition:fade>
 			<div class="tier-list">
 				{#each tiers as tier (tier.label)}
-					<TierRow {...tier} onDrop={handleDrop} onDragStart={handleDragStart} />
+					<TierRow
+						{...tier}
+						isSelectedId={selectedCardId}
+						onDrop={handleDrop}
+						onDragStart={handleDragStart}
+						onClickValue={selectValue}
+						onClickTier={(label) => moveValue(selectedCardId!, label)}
+					/>
 				{/each}
 			</div>
 
@@ -280,14 +344,21 @@
 
 				<div
 					class="pool-container glass"
+					class:clickable={!!selectedCardId && !pool.find((v) => v.id === selectedCardId)}
 					ondrop={handlePoolDrop}
 					ondragover={handleDragOver}
+					onclick={() => selectedCardId && moveValue(selectedCardId, null)}
 					role="listbox"
 					aria-label="Пул ценностей"
 					tabindex="0"
 				>
 					{#each pool as value (value.id)}
-						<ValueCard {...value} onDragStart={handleDragStart} />
+						<ValueCard
+							{...value}
+							onDragStart={handleDragStart}
+							isSelected={selectedCardId === value.id}
+							onClick={selectValue}
+						/>
 					{/each}
 					{#if pool.length === 0}
 						<p class="empty-msg">Все ценности распределены</p>
@@ -300,13 +371,16 @@
 			bind:top5
 			bind:personalDefinitions
 			categorizedValues={categorizedCandidates}
+			{selectedCardId}
 			onDrop={handleTop5Drop}
+			{moveValueToTop5}
 			onRemove={removeFromTop5}
 			onFinish={() => goToPhase(3)}
 			onBack={() => goToPhase(1)}
 			canFinish={canFinishRanking}
 			{handleDragStart}
 			{handleDragOver}
+			onClickValue={selectValue}
 		/>
 	{:else if currentPhase === 3}
 		<CommittedActions
@@ -335,7 +409,7 @@
 </main>
 
 <footer>
-	<p>© 2026 Тест ценностей.</p>
+	<p>© 2026 Тест ценностей. Ваши данные хранятся у Вас локально и никуда не передаются.</p>
 </footer>
 
 <style>
@@ -452,6 +526,15 @@
 		align-items: flex-start;
 		justify-content: flex-start;
 		border-style: dashed;
+	}
+
+	.pool-container.clickable {
+		cursor: pointer;
+		border-color: var(--accent-primary);
+	}
+
+	.pool-container.clickable:hover {
+		background: rgba(255, 255, 255, 0.03);
 	}
 
 	.empty-msg {

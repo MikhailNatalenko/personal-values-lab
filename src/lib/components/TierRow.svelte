@@ -5,11 +5,23 @@
 		label: string;
 		color: string;
 		values: { id: string; name: string; description: string }[];
+		isSelectedId?: string | null;
 		onDrop: (e: DragEvent, targetTier: string) => void;
 		onDragStart: (e: DragEvent, id: string) => void;
+		onClickValue?: (id: string) => void;
+		onClickTier?: (label: string) => void;
 	}
 
-	let { label, color, values, onDrop, onDragStart }: Props = $props();
+	let {
+		label,
+		color,
+		values,
+		isSelectedId = null,
+		onDrop,
+		onDragStart,
+		onClickValue,
+		onClickTier
+	}: Props = $props();
 
 	let isOver = $state(false);
 
@@ -27,14 +39,22 @@
 		isOver = false;
 		onDrop(e, label);
 	}
+
+	function handleClick() {
+		if (onClickTier && isSelectedId) {
+			onClickTier(label);
+		}
+	}
 </script>
 
 <div
 	class="tier-row glass"
 	class:drag-over={isOver}
+	class:clickable={!!isSelectedId}
 	ondragover={handleDragOver}
 	ondragleave={handleDragLeave}
 	ondrop={handleDrop}
+	onclick={handleClick}
 	role="region"
 	aria-label="Tier {label}"
 >
@@ -43,7 +63,12 @@
 	</div>
 	<div class="tier-content">
 		{#each values as value (value.id)}
-			<ValueCard {...value} {onDragStart} />
+			<ValueCard
+				{...value}
+				{onDragStart}
+				isSelected={isSelectedId === value.id}
+				onClick={onClickValue}
+			/>
 		{/each}
 	</div>
 </div>
@@ -60,6 +85,15 @@
 	.tier-row.drag-over {
 		border-color: var(--accent-primary);
 		background: rgba(59, 130, 246, 0.05);
+	}
+
+	.tier-row.clickable {
+		cursor: pointer;
+	}
+
+	.tier-row.clickable:hover {
+		border-color: var(--accent-primary);
+		background: rgba(255, 255, 255, 0.03);
 	}
 
 	.tier-label {

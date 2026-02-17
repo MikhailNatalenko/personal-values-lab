@@ -1,33 +1,49 @@
 <script lang="ts">
 	interface Props {
-		name: string;
 		id: string;
+		name: string;
 		description: string;
+		isSelected?: boolean;
 		onDragStart: (e: DragEvent, id: string) => void;
+		onClick?: (id: string) => void;
 	}
 
-	let { name, id, description, onDragStart }: Props = $props();
+	let { id, name, description, isSelected = false, onDragStart, onClick }: Props = $props();
+
+	function handleClick(e: MouseEvent) {
+		if (onClick) {
+			e.stopPropagation();
+			onClick(id);
+		}
+	}
 </script>
 
 <div
 	class="value-card glass"
+	class:selected={isSelected}
 	draggable="true"
 	ondragstart={(e) => onDragStart(e, id)}
+	onclick={handleClick}
 	role="button"
 	tabindex="0"
+	aria-label={name}
 >
-	<span class="name">{name}</span>
-	<div class="tooltip glass">{description}</div>
+	<span class="value-name">{name}</span>
+	<div class="tooltip glass">
+		<strong>{name}</strong>
+		<p>{description}</p>
+	</div>
 </div>
 
 <style>
 	.value-card {
 		position: relative;
-		padding: 0.75rem 1.25rem;
+		padding: 0.8rem 1.2rem;
+		border-radius: 12px;
 		cursor: grab;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
+		/* display: inline-flex; Removed */
+		/* align-items: center; Removed */
+		/* justify-content: center; Removed */
 		min-width: 140px;
 		user-select: none;
 		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -93,10 +109,12 @@
 		cursor: grabbing;
 	}
 
-	.name {
+	.value-name {
 		font-size: 0.875rem;
-		font-weight: 500;
+		font-weight: 600;
 		color: var(--text-primary);
 		text-align: center;
+		display: block;
+		width: 100%;
 	}
 </style>
