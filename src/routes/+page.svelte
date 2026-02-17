@@ -408,7 +408,9 @@
 					<div class="section-header">
 						<h2 class="section-title">Ценности</h2>
 						{#if canProceedToPhase2}
-							<button class="btn btn-primary" onclick={() => goToPhase(2)}> → </button>
+							<button class="btn btn-primary next-phase-btn" onclick={() => goToPhase(2)}>
+								Продолжить →
+							</button>
 						{/if}
 					</div>
 
@@ -608,9 +610,20 @@
 	}
 
 	.pool-section .section-header {
-		padding: 1.5rem;
+		padding: 1.25rem 1.5rem;
 		border-bottom: 1px solid var(--border-light);
 		background: rgba(255, 255, 255, 0.02);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.next-phase-btn {
+		white-space: nowrap;
+		padding: 0.5rem 1rem !important;
+		font-size: 0.9rem !important;
+		box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
 	}
 
 	.pool-container {
