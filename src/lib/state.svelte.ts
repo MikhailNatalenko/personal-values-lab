@@ -242,7 +242,11 @@ class AppState {
     save = () => {
         if (typeof localStorage === 'undefined') return;
         const state = {
-            tiers: this.tiers.map((t) => ({ label: t.label, values: t.values })),
+            tiers: this.tiers.map((t) => ({
+                label: t.label,
+                description: t.description,
+                values: t.values
+            })),
             pool: this.pool,
             currentPhase: this.currentPhase,
             top5: this.top5,

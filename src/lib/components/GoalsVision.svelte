@@ -119,9 +119,20 @@
 		width: 100%;
 		min-height: 80px;
 		padding: 0.75rem;
-		border-radius: 8px;
+		border-radius: 12px;
 		margin-top: 0.5rem;
 		font-family: inherit;
 		resize: vertical;
+		color: white;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		transition: all 0.3s ease;
+	}
+	textarea:focus {
+		outline: none;
+		border-color: var(--accent-primary);
+		background: rgba(255, 255, 255, 0.05);
+	}
+	textarea::placeholder {
+		color: rgba(255, 255, 255, 0.3);
 	}
 </style>
