@@ -1,9 +1,11 @@
 <script lang="ts">
 	import ValueCard from './ValueCard.svelte';
+	import { tooltip } from '$lib/tooltipStore';
 
 	interface Props {
 		label: string;
 		color: string;
+		description: string;
 		values: { id: string; name: string; description: string }[];
 		isSelectedId?: string | null;
 		onDrop: (e: DragEvent, targetTier: string) => void;
@@ -15,6 +17,7 @@
 	let {
 		label,
 		color,
+		description,
 		values,
 		isSelectedId = null,
 		onDrop,
@@ -45,6 +48,21 @@
 			onClickTier(label);
 		}
 	}
+
+	function handleMouseEnter(e: MouseEvent) {
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		tooltip.set({
+			active: true,
+			name: `Категория ${label}`,
+			description,
+			x: rect.left + rect.width / 2,
+			y: rect.top
+		});
+	}
+
+	function handleMouseLeave() {
+		tooltip.update((t) => ({ ...t, active: false }));
+	}
 </script>
 
 <div
@@ -58,7 +76,12 @@
 	role="region"
 	aria-label="Tier {label}"
 >
-	<div class="tier-label" style="background-color: {color}">
+	<div
+		class="tier-label"
+		style="background-color: {color}"
+		onmouseenter={handleMouseEnter}
+		onmouseleave={handleMouseLeave}
+	>
 		<span>{label}</span>
 	</div>
 	<div class="tier-content">

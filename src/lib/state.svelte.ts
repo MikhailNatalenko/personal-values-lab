@@ -9,6 +9,7 @@ export interface Value {
 export interface Tier {
     label: string;
     color: string;
+    description: string;
     values: Value[];
 }
 
@@ -16,10 +17,11 @@ const STORAGE_KEY = 'personal-values-lab-state';
 
 class AppState {
     tiers = $state<Tier[]>([
-        { label: 'S', color: '#ff7f7f', values: [] },
-        { label: 'A', color: '#ffbf7f', values: [] },
-        { label: 'B', color: '#ffff7f', values: [] },
-        { label: 'C', color: '#7fff7f', values: [] }
+        { label: 'S', color: '#ff7f7f', description: 'Критически важные ценности', values: [] },
+        { label: 'A', color: '#ff947fff', description: 'Очень важные ценности', values: [] },
+        { label: 'B', color: '#ffd97fff', description: 'Важные ценности', values: [] },
+        { label: 'C', color: '#fdff7fff', description: 'Второстепенные ценности', values: [] },
+        { label: 'D', color: '#b0ff7fff', description: 'Наименее приоритетные ценности', values: [] }
     ]);
 
     pool = $state<Value[]>([...initialValues]);
