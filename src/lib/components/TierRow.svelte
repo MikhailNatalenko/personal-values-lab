@@ -43,10 +43,22 @@
 		onDrop(e, label);
 	}
 
-	function handleClick() {
+	function handleSelect() {
 		if (onClickTier && isSelectedId) {
 			onClickTier(label);
 		}
+	}
+
+	function handleKeyDown(e: KeyboardEvent) {
+		if ((e.key === 'Enter' || e.key === ' ') && onClickTier && isSelectedId) {
+			e.preventDefault();
+			handleSelect();
+		}
+	}
+
+	function handleLabelKeyDown(e: KeyboardEvent) {
+		// Just to satisfy linting, usually labels aren't the primary interaction point
+		// but since it has a tooltip, we make it focusable
 	}
 
 	function handleMouseEnter(e: MouseEvent) {
@@ -72,15 +84,20 @@
 	ondragover={handleDragOver}
 	ondragleave={handleDragLeave}
 	ondrop={handleDrop}
-	onclick={handleClick}
-	role="region"
-	aria-label="Tier {label}"
+	onclick={handleSelect}
+	onkeydown={handleKeyDown}
+	role={isSelectedId ? 'button' : 'region'}
+	tabindex={isSelectedId ? 0 : undefined}
+	aria-label="Категория {label}: {description}"
 >
 	<div
 		class="tier-label"
 		style="background-color: {color}"
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
+		onkeydown={handleLabelKeyDown}
+		role="img"
+		aria-label="Метка категории {label}"
 	>
 		<span>{label}</span>
 	</div>

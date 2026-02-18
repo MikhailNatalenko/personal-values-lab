@@ -7,6 +7,11 @@
 	import GoalsVision from '$lib/components/GoalsVision.svelte';
 	import ResultsSummary from '$lib/components/ResultsSummary.svelte';
 	import GlobalTooltip from '$lib/components/GlobalTooltip.svelte';
+	import { onMount } from 'svelte';
+
+	onMount(() => {
+		appState.setupExitWarning();
+	});
 </script>
 
 <svelte:head>

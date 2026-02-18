@@ -19,6 +19,13 @@
 		}
 	}
 
+	function handleKeyDown(e: KeyboardEvent) {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			if (onClick) onClick(id);
+		}
+	}
+
 	function handleMouseEnter(e: MouseEvent) {
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		tooltip.set({
@@ -35,20 +42,19 @@
 	}
 </script>
 
-<div
+<button
 	class="value-card glass"
 	class:selected={isSelected}
 	draggable="true"
 	ondragstart={(e) => onDragStart(e, id)}
 	onclick={handleClick}
+	onkeydown={handleKeyDown}
 	onmouseenter={handleMouseEnter}
 	onmouseleave={handleMouseLeave}
-	role="button"
-	tabindex="0"
-	aria-label={name}
+	aria-label="{name}. {description}. Нажмите, чтобы выбрать, или перетащите."
 >
 	<span class="value-name">{name}</span>
-</div>
+</button>
 
 <style>
 	.value-card {

@@ -16,6 +16,17 @@
 	const validTop5 = $derived(top5.filter((v): v is Value => v !== null));
 </script>
 
+{#snippet dataBlock(label: string, content: string, isPersonal: boolean = false)}
+	<div class="data-block">
+		<h5>{label}</h5>
+		{#if isPersonal}
+			<div class="content">{content || 'Определение не указано'}</div>
+		{:else}
+			<div class="content">{@html content}</div>
+		{/if}
+	</div>
+{/snippet}
+
 <div class="phase-container" transition:fade>
 	<div class="summary-header no-print">
 		<button class="btn btn-secondary" onclick={onBack}>← Назад</button>
@@ -44,38 +55,26 @@
 						</div>
 
 						<div class="card-grid">
-							<div class="data-block">
-								<h5>Личное определение</h5>
-								<div class="content">{personalDefinitions[val.id] || 'Определение не указано'}</div>
-							</div>
+							{@render dataBlock('Личное определение', personalDefinitions[val.id], true)}
 
 							{#if committedActions[val.id]}
-								<div class="data-block">
-									<h5>Проживание и приверженность</h5>
-									<p class="score">
-										Контакт с ценностью: <strong>{committedActions[val.id].contact}/10</strong>
-									</p>
-									<p><strong>Что наполняет:</strong> {committedActions[val.id].filling || '...'}</p>
-									<p>
-										<strong>Ближайший шаг:</strong>
-										{committedActions[val.id].immediate || '...'}
-									</p>
-								</div>
+								{@const action = committedActions[val.id]}
+								{@render dataBlock(
+									'Проживание и приверженность',
+									`<p class="score">Контакт с ценностью: <strong>${action.contact}/10</strong></p>` +
+										`<p><strong>Что наполняет:</strong> ${action.filling || '...'}</p>` +
+										`<p><strong>Ближайший шаг:</strong> ${action.immediate || '...'}</p>`
+								)}
 							{/if}
 
 							{#if goalsVision[val.id]}
-								<div class="data-block">
-									<h5>Стратегия и Видение</h5>
-									<p><strong>Долгосрочная цель:</strong> {goalsVision[val.id].longTerm || '...'}</p>
-									<p>
-										<strong>Промежуточные шаги:</strong>
-										{goalsVision[val.id].intermediate || '...'}
-									</p>
-									<p>
-										<strong>Конкретные действия:</strong>
-										{goalsVision[val.id].actions || '...'}
-									</p>
-								</div>
+								{@const goal = goalsVision[val.id]}
+								{@render dataBlock(
+									'Стратегия и Видение',
+									`<p><strong>Долгосрочная цель:</strong> ${goal.longTerm || '...'}</p>` +
+										`<p><strong>Промежуточные шаги:</strong> ${goal.intermediate || '...'}</p>` +
+										`<p><strong>Конкретные действия:</strong> ${goal.actions || '...'}</p>`
+								)}
 							{/if}
 						</div>
 					</div>
@@ -242,13 +241,10 @@
 		white-space: pre-wrap;
 	}
 
-	.data-block p {
-		margin-bottom: 0.75rem;
-		line-height: 1.5;
-	}
-
 	.score {
 		font-size: 1.1rem;
+		display: block;
+		margin-bottom: 0.5rem;
 	}
 
 	.tiers-summary-grid {

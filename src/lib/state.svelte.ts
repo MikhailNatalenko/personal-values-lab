@@ -257,6 +257,18 @@ class AppState {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     };
 
+    // Helper to setup page exit warning
+    setupExitWarning = () => {
+        if (typeof window === 'undefined') return;
+        window.onbeforeunload = (e) => {
+            // Only show if user has started work
+            if (this.validTop5.length > 0) {
+                e.preventDefault();
+                return 'У вас есть несохраненные изменения. Вы уверены, что хотите уйти?';
+            }
+        };
+    };
+
     load = () => {
         if (typeof localStorage === 'undefined') return;
         const saved = localStorage.getItem(STORAGE_KEY);

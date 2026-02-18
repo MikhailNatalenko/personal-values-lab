@@ -67,6 +67,15 @@
 		onLocalDragEnd();
 		onDrop(e, index);
 	}
+
+	function handleKeyDown(e: KeyboardEvent, index: number) {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			if (selectedCardId && (!top5[index] || selectedCardId !== top5[index]?.id)) {
+				moveValueToTop5?.(selectedCardId, index);
+			}
+		}
+	}
 </script>
 
 <div class="phase2-container" transition:fade>
@@ -86,12 +95,13 @@
 	</div>
 
 	<div class="main-layout">
-		<div class="top5-slots">
+		<div class="top5-slots" role="list" aria-label="Топ-5 слотов для ценностей">
 			{#each top5 as val, i (val?.id ?? `empty-${i}`)}
 				<div
 					class="slot-wrapper"
 					class:show-line={dragOverIndex === i}
 					ondragenter={() => (dragOverIndex = i)}
+					role="presentation"
 					animate:flip={{ duration: 1000 }}
 				>
 					<div
@@ -112,7 +122,12 @@
 								moveValueToTop5?.(selectedCardId, i);
 							}
 						}}
-						role="listitem"
+						onkeydown={(e) => handleKeyDown(e, i)}
+						role="button"
+						tabindex={selectedCardId || val ? 0 : -1}
+						aria-label={val
+							? `Слот ${i + 1}: ${val.name}`
+							: `Пустой слот ${i + 1}. Нажмите, чтобы поместить сюда выбранную ценность.`}
 					>
 						<div class="slot-num">{i + 1}</div>
 						<div class="slot-content">
@@ -142,7 +157,12 @@
 			<div class="section-header">
 				<h2 class="section-title">Ваш выбор</h2>
 			</div>
-			<div class="pool-container" ondragover={() => (dragOverIndex = null)}>
+			<div
+				class="pool-container"
+				ondragover={() => (dragOverIndex = null)}
+				role="list"
+				aria-label="Свободные ценности"
+			>
 				{#each categorizedValues.filter((v) => !top5.find((t) => t?.id === v.id)) as val (val.id)}
 					<div
 						class="value-card-wrapper"
@@ -150,6 +170,7 @@
 						animate:flip={{ duration: 800 }}
 						ondragstart={(e) => onLocalDragStart(e, val.id)}
 						ondragend={onLocalDragEnd}
+						role="listitem"
 					>
 						<ValueCard
 							id={val.id}
