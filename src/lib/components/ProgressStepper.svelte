@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { appState } from '$lib/state.svelte';
+
 	interface Props {
 		currentPhase: number;
 	}
@@ -11,15 +13,27 @@
 		{ id: 3, label: 'Действия' },
 		{ id: 4, label: 'Видение' }
 	];
+
+	function isPhaseAvailable(p: number) {
+		if (p === 1) return true;
+		if (p === 2) return appState.canProceedToPhase2;
+		if (p > 2) return appState.validTop5.length > 0;
+		return false;
+	}
 </script>
 
 <div class="stepper-container">
-	<div class="stepper">
+	<nav class="stepper" aria-label="Прогресс">
 		{#each steps as step, i}
-			<div
+			{@const available = isPhaseAvailable(step.id)}
+			<button
 				class="step"
 				class:active={currentPhase === step.id}
 				class:completed={currentPhase > step.id}
+				class:available
+				onclick={() => appState.goToPhase(step.id)}
+				disabled={!available}
+				aria-current={currentPhase === step.id ? 'step' : undefined}
 			>
 				<div class="step-circle">
 					{#if currentPhase > step.id}
@@ -29,12 +43,12 @@
 					{/if}
 				</div>
 				<span class="step-label">{step.label}</span>
-			</div>
+			</button>
 			{#if i < steps.length - 1}
 				<div class="step-line" class:completed={currentPhase > step.id}></div>
 			{/if}
 		{/each}
-	</div>
+	</nav>
 </div>
 
 <style>
@@ -58,6 +72,15 @@
 		width: 80px;
 		opacity: 0.4;
 		transition: all 0.3s ease;
+		background: none;
+		border: none;
+		padding: 0;
+		color: inherit;
+		font-family: inherit;
+	}
+
+	.step.available {
+		cursor: pointer;
 	}
 
 	.step.active {

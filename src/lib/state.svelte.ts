@@ -67,7 +67,9 @@ class AppState {
 
     categorizedCandidates = $derived(
         this.tiers.flatMap((t) =>
-            t.values.map((v) => ({ ...v, tierLabel: t.label, tierColor: t.color }))
+            t.values
+                .filter((v) => !this.top5.some((topV) => topV?.id === v.id))
+                .map((v) => ({ ...v, tierLabel: t.label, tierColor: t.color }))
         )
     );
 
@@ -81,6 +83,9 @@ class AppState {
     };
 
     goToPhase = (p: number) => {
+        if (p === 2 && !this.canProceedToPhase2) return;
+        if (p > 2 && this.validTop5.length === 0) return;
+
         this.currentPhase = p;
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -137,6 +142,11 @@ class AppState {
 
         if (targetTierLabel === null) {
             this.pool.push(value);
+            // Remove from top5 if it was there
+            const topIndex = this.top5.findIndex((v) => v?.id === id);
+            if (topIndex !== -1) {
+                this.top5[topIndex] = null;
+            }
         } else {
             const targetTier = this.tiers.find((t) => t.label === targetTierLabel);
             if (targetTier) {
@@ -190,16 +200,20 @@ class AppState {
             return;
         }
 
-        let value = this.findFromTiers(id);
+        // Find value without removing it from tiers
+        let value: Value | undefined;
+        for (const tier of this.tiers) {
+            value = tier.values.find((v) => v.id === id);
+            if (value) break;
+        }
+
         if (!value) return;
 
         const valuesOnly = this.top5.filter((v): v is Value => v !== null);
         valuesOnly.splice(index, 0, value);
 
         if (valuesOnly.length > 5) {
-            const evicted = valuesOnly.pop()!;
-            const targetTier = this.tiers.find((t) => t.label === 'S') || this.tiers[0];
-            targetTier.values.push(evicted);
+            valuesOnly.pop(); // Simply remove from top5, it's still in its tier
         }
 
         const newTop5 = Array(5).fill(null);
@@ -213,17 +227,6 @@ class AppState {
         this.selectedCardId = null;
     };
 
-    findFromTiers = (id: string): Value | undefined => {
-        for (const tier of this.tiers) {
-            const foundIdx = tier.values.findIndex((v) => v.id === id);
-            if (foundIdx !== -1) {
-                const value = tier.values[foundIdx];
-                tier.values.splice(foundIdx, 1);
-                return value;
-            }
-        }
-        return undefined;
-    };
 
     removeFromTop5 = (index: number) => {
         this.top5[index] = null;
@@ -267,6 +270,16 @@ class AppState {
                 if (data.personalDefinitions) this.personalDefinitions = data.personalDefinitions;
                 if (data.committedActions) this.committedActions = data.committedActions;
                 if (data.goalsVision) this.goalsVision = data.goalsVision;
+
+                // Recovery logic: ensure Top 5 values are present in tiers or pool
+                this.validTop5.forEach((v) => {
+                    const inTiers = this.tiers.some((t) => t.values.some((val) => val.id === v.id));
+                    const inPool = this.pool.some((val) => val.id === v.id);
+                    if (!inTiers && !inPool) {
+                        // Restore to S tier if lost
+                        this.tiers[0].values.push(v);
+                    }
+                });
             } catch (e) {
                 console.error('Failed to load state:', e);
             }
